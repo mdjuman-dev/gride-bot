@@ -6,17 +6,53 @@
 //+------------------------------------------------------------------+
 #property copyright "Buy-stop-sell-stop"
 #property version   "1.00"
-// GridStopEA_Cent.mq5 defines GSE_CENT and includes this file.
+// GridStopEA_Cent.mq5 defines GSE_CENT and GridStopEA_BTC.mq5 defines GSE_BTC,
+// then each includes this file.
 #ifdef GSE_CENT
 #property description "Buy Stop / Sell Stop grid EA (XAUUSD), cent account version. Money inputs are in cents (USC)."
 #define GSE_NAME   "GridStopEA Cent"
 #define GSE_MAGIC  26011002
 #define GSE_PREFIX "STRc"
 #else
+#ifdef GSE_BTC
+#property description "Buy Stop / Sell Stop grid EA (BTCUSD), defaults for a $1000 account."
+#define GSE_NAME   "GridStopEA BTC"
+#define GSE_MAGIC  26011003
+#define GSE_PREFIX "STRb"
+#else
 #property description "Buy Stop / Sell Stop grid EA (XAUUSD)"
 #define GSE_NAME   "GridStopEA"
 #define GSE_MAGIC  26011001
 #define GSE_PREFIX "STR"
+#endif
+#endif
+
+// Default inputs. BTC moves in dollars where gold moves in cents, so the
+// price-unit defaults are scaled up; lots are the broker minimum for $1000.
+#ifdef GSE_BTC
+#define GSE_STEP_PCT   0.06   // 100000 -> 60
+#define GSE_STEP_FIXED 60.0
+#define GSE_LOT1       0.01
+#define GSE_LOT2       0.01
+#define GSE_LOT3       0.02
+#define GSE_TARGET     3.0
+#define GSE_MAXLOSS    100.0
+#define GSE_BE_OFFSET  2.0
+#define GSE_TREND_TGT  10.0
+#define GSE_SPREAD     30.0
+#define GSE_SLIPPAGE   20.0
+#else
+#define GSE_STEP_PCT   0.0333 // 4020 -> 1.34
+#define GSE_STEP_FIXED 1.34
+#define GSE_LOT1       0.01
+#define GSE_LOT2       0.05
+#define GSE_LOT3       0.20
+#define GSE_TARGET     6.0
+#define GSE_MAXLOSS    0.0
+#define GSE_BE_OFFSET  0.05
+#define GSE_TREND_TGT  100.0
+#define GSE_SPREAD     0.50
+#define GSE_SLIPPAGE   0.30
 #endif
 
 #include <Trade\Trade.mqh>
@@ -58,22 +94,22 @@ enum ENUM_TREND_SWITCH
 //--- Grid
 input group "Grid"
 input ENUM_STEP_MODE    InpStepMode     = STEP_PERCENT; // Step mode
-input double            InpStepPercent  = 0.0333;       // Step % of price (4020 -> 1.34)
-input double            InpStepFixed    = 1.34;         // Fixed step (price units)
+input double            InpStepPercent  = GSE_STEP_PCT; // Step % of price
+input double            InpStepFixed    = GSE_STEP_FIXED; // Fixed step (price units)
 input ENUM_CENTER_PRICE InpCenterPrice  = CENTER_BID;   // Grid centre price
 input int               InpTier1Levels  = 10;           // Tier 1 levels per side
-input double            InpTier1Lot     = 0.01;         // Tier 1 lot
+input double            InpTier1Lot     = GSE_LOT1;     // Tier 1 lot
 input int               InpTier2Levels  = 10;           // Tier 2 levels per side
-input double            InpTier2Lot     = 0.05;         // Tier 2 lot
+input double            InpTier2Lot     = GSE_LOT2;     // Tier 2 lot
 input int               InpTier3Levels  = 10;           // Tier 3 levels per side
-input double            InpTier3Lot     = 0.20;         // Tier 3 lot
+input double            InpTier3Lot     = GSE_LOT3;     // Tier 3 lot
 input bool              InpReplaceLevels = true;        // Re-place stop order on an emptied level
 
 //--- Basket
 input group "Basket"
-input double InpBasketTarget     = 6.0;   // Close all when cycle profit >= (money)
+input double InpBasketTarget     = GSE_TARGET;   // Close all when cycle profit >= (money)
 input bool   InpIncludeCosts     = false; // Count commission/swap in cycle profit
-input double InpMaxLoss          = 0.0;   // Close all when cycle loss >= (money, 0 = off)
+input double InpMaxLoss          = GSE_MAXLOSS;   // Close all when cycle loss >= (money, 0 = off)
 input bool   InpPauseAfterMaxLoss = true; // Stop opening new grids after max loss
 
 //--- Trailing
@@ -83,7 +119,7 @@ input double InpTrailStartSteps    = 2.0;  // Start trailing after profit of N s
 input double InpTrailDistanceSteps = 2.0;  // Trail distance from price (steps)
 input double InpTrailTightenSteps  = 3.0;  // Tighten trail after profit of N steps (0 = off)
 input double InpTrailTightDistSteps = 1.0; // Tightened trail distance (steps)
-input double InpBreakevenOffset    = 0.05; // Minimum locked profit (price units)
+input double InpBreakevenOffset    = GSE_BE_OFFSET; // Minimum locked profit (price units)
 input double InpTrailMinMoveSteps  = 0.05; // Minimum SL move (steps)
 
 //--- Trend mode
@@ -91,7 +127,7 @@ input group "Trend mode"
 input bool   InpTrendEnable      = true;  // Enable trend mode
 input int    InpTrendTier        = 2;     // Activates when a position of this tier is open
 input bool   InpTrendNoTrail     = true;  // Disable trailing in trend mode
-input double InpTrendTarget      = 100.0; // Trend mode: start locking at profit (money)
+input double InpTrendTarget      = GSE_TREND_TGT; // Trend mode: start locking at profit (money)
 input double InpTrendGivebackPct = 30.0;  // Trend mode: close after giving back % of peak
 input ENUM_TREND_SWITCH InpTrendSwitch = TREND_AUTO; // When trend mode may start
 input int    InpVolMinutes       = 15;    // Fast market: look back N minutes
@@ -102,7 +138,7 @@ input int    InpTrendEndHour     = 15;    // Trend hours end (server time)
 
 //--- Filters
 input group "Filters"
-input double InpMaxSpread     = 0.50;  // Max spread for a new grid (price units, 0 = off)
+input double InpMaxSpread     = GSE_SPREAD;  // Max spread for a new grid (price units, 0 = off)
 input bool InpDailyClose      = false; // Close everything once a day (before rollover)
 input int  InpDailyHour       = 21;    // Daily close hour (server time)
 input int  InpDailyMinute     = 0;     // Daily close minute
@@ -128,7 +164,7 @@ input group "Execution"
 input ulong  InpMagic          = GSE_MAGIC;  // Magic number
 input string InpCommentPrefix  = GSE_PREFIX; // Order comment prefix
 input bool   InpAsync          = true;     // Asynchronous orders (faster)
-input double InpMaxSlippage    = 0.30;     // Max slippage (price units)
+input double InpMaxSlippage    = GSE_SLIPPAGE;     // Max slippage (price units)
 input int    InpTimerMs        = 200;      // Timer interval (ms)
 input bool   InpShowPanel      = true;     // Show info panel
 
@@ -999,6 +1035,10 @@ int OnInit()
    if(!IsCentAccount())
       PrintFormat("Warning: account currency is %s, not a cent account. Use GridStopEA instead", AccountInfoString(ACCOUNT_CURRENCY));
 #else
+#ifdef GSE_BTC
+   if(StringFind(_Symbol, "BTC") < 0)
+      PrintFormat("Warning: %s is not a BTC symbol. GridStopEA_BTC defaults are sized for BTCUSD", _Symbol);
+#endif
    if(IsCentAccount())
       Print("Warning: cent account detected. Money inputs (target, max loss) are read as cents; GridStopEA_Cent has cent defaults");
 #endif
