@@ -1,6 +1,6 @@
 # GridStopEA: Buy Stop / Sell Stop গ্রিড বট (MT5)
 
-## কীভাবে চালাবে +kFT@|S6
+## কীভাবে চালাবে 
 
 1. `GridStopEA.mq5` আর `GridStopEA.ex5` কপি করো এখানে: MT5 → **File → Open Data Folder → MQL5 → Experts**
 2. MT5-এ Navigator-এ রাইট-ক্লিক করে **Refresh** দাও
